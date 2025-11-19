@@ -5,20 +5,20 @@ services:
       - 9411:9411
     restart: always
     networks:
-      - erudio-network
+      - perissinotto-network
 
   naming-server:
-    image: leandrocgsi/naming-server:latest
+    image: aperissinotto/naming-server:latest
     ports:
       - 8761:8761
     restart: always
     depends_on:
       - zipkin-server
     networks:
-      - erudio-network
+      - perissinotto-network
   
   api-gateway:
-    image: leandrocgsi/api-gateway:latest
+    image: aperissinotto/api-gateway:latest
     ports:
       - 8765:8765
     restart: always
@@ -29,7 +29,7 @@ services:
       SPRING_ZIPKIN_BASEURL: http://zipkin-server:9411
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://naming-server:8761/eureka
     networks:
-      - erudio-network
+      - perissinotto-network
 
   book-db:
     image: mysql:9.3.0
@@ -43,7 +43,7 @@ services:
     ports:
       - 3310:3306 # 3310 on host → 3306 on container
     networks:
-      - erudio-network
+      - perissinotto-network
 
   exchange-db:
     image: mysql:9.3.0
@@ -57,10 +57,10 @@ services:
     ports:
       - 3308:3306 # 3310 on host → 3306 on container
     networks:
-      - erudio-network
+      - perissinotto-network
 
   exchange-service:
-    image: leandrocgsi/exchange-service:latest
+    image: aperissinotto/exchange-service:latest
     restart: always
     environment:
       TZ: America/Sao_Paulo
@@ -76,10 +76,10 @@ services:
       - naming-server
       - exchange-db
     networks:
-      - erudio-network
+      - perissinotto-network
 
   book-service:
-    image: leandrocgsi/book-service:latest
+    image: aperissinotto/book-service:latest
     restart: always
     environment:
       TZ: America/Sao_Paulo
@@ -95,8 +95,8 @@ services:
       - naming-server
       - book-db
     networks:
-      - erudio-network
+      - perissinotto-network
 networks:
-  erudio-network:
-    name: erudio-network
+  perissinotto-network:
+    name: perissinotto-network
     driver: bridge
