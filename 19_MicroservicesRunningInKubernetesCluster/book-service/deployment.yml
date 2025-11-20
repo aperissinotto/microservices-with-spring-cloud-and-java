@@ -22,15 +22,21 @@ spec:
       labels:
         app: book-service
     spec:
-      nodeSelector:
-        kubernetes.io/arch: arm64
       containers:
       - name: book-service
         image: aperissinotto/book-service:kube-v1
         imagePullPolicy: IfNotPresent
-        envFrom:
-          - configMapRef:
-              name: book-service
+        env:
+        - name: SPRING_DATASOURCE_URL
+          value: jdbc:mysql://10.43.96.139:3306/book_service
+        readinessProbe:
+          httpGet:
+            port: 8100
+            path: /actuator/health/readiness
+        livenessProbe:
+          httpGet:
+            port: 8100
+            path: /actuator/health/readiness
       restartPolicy: Always
 ---
 apiVersion: v1
@@ -56,12 +62,4 @@ spec:
     app: book-service
   sessionAffinity: None
   type: LoadBalancer
----
-apiVersion: v1
-data:
-  EXCHANGE_SERVICE_URI: http://exchange-service
-  SPRING_DATASOURCE_URL: jdbc:mysql://10.43.96.139:3306/book_service
-kind: ConfigMap
-metadata:
-  name: book-service
-  namespace: default
+
