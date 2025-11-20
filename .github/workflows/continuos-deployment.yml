@@ -3,7 +3,8 @@ name: Microservices Continuous Deployment with Github Actions
 on:
   push:
     branches:
-    - "main"
+      - "main"
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -11,42 +12,55 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
+    # Login no Docker Hub
     - name: Login to Docker Hub
       uses: docker/login-action@v3
       with:
-        username: ${{secrets.DOCKER_USERNAME}}
-        password: ${{secrets.DOCKER_ACCESS_TOKEN}}
+        username: ${{ secrets.DOCKER_USERNAME }}
+        password: ${{ secrets.DOCKER_ACCESS_TOKEN }}
 
+    # Suporte a ARM64
+    - name: Set up QEMU
+      uses: docker/setup-qemu-action@v3
+
+    # Habilita build multi-arch
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    # Java 21
     - name: Setup Java 21
       uses: actions/setup-java@v4
       with:
         java-version: '21'
-        distribution: 'adopt'
+        distribution: 'temurin'
 
-    - name: Build Exchange Microservice Docker Image
+    # Build dos microserviços
+    - name: Build Exchange Microservice
       working-directory: ./19_MicroservicesRunningInKubernetesCluster/exchange-service
-      run: mvn clean package
+      run: mvn clean package -DskipTests
 
-    - name: Build Book Microservice Docker Image
+    - name: Build Book Microservice
       working-directory: ./19_MicroservicesRunningInKubernetesCluster/book-service
-      run: mvn clean package
+      run: mvn clean package -DskipTests
 
-    - name: Docker Compose Build
-      working-directory: ./19_MicroservicesRunningInKubernetesCluster
-      run: docker compose build
-
-    - name: Tag Docker Images
+    # Build multi-arch Book Service
+    - name: Build & Push Book Service (multi-arch)
       run: |
-        docker tag ${{secrets.DOCKER_USERNAME}}/book-service:latest ${{secrets.DOCKER_USERNAME}}/book-service:${{github.RUN_ID}}
-        docker tag ${{secrets.DOCKER_USERNAME}}/book-service:latest ${{secrets.DOCKER_USERNAME}}/book-service:kube-v1
-        docker tag ${{secrets.DOCKER_USERNAME}}/exchange-service:latest ${{secrets.DOCKER_USERNAME}}/exchange-service:${{github.RUN_ID}}
-        docker tag ${{secrets.DOCKER_USERNAME}}/exchange-service:latest ${{secrets.DOCKER_USERNAME}}/exchange-service:kube-v1
+        docker buildx build \
+          --platform linux/amd64,linux/arm64 \
+          -t ${{ secrets.DOCKER_USERNAME }}/book-service:latest \
+          -t ${{ secrets.DOCKER_USERNAME }}/book-service:kube-v1 \
+          -t ${{ secrets.DOCKER_USERNAME }}/book-service:${{ github.run_id }} \
+          --push \
+          ./19_MicroservicesRunningInKubernetesCluster/book-service
 
-    - name: Push Docker Images to Docker Hub
+    # Build multi-arch Exchange Service
+    - name: Build & Push Exchange Service (multi-arch)
       run: |
-        docker push ${{secrets.DOCKER_USERNAME}}/book-service:latest
-        docker push ${{secrets.DOCKER_USERNAME}}/book-service:kube-v1
-        docker push ${{secrets.DOCKER_USERNAME}}/book-service:${{github.RUN_ID}}
-        docker push ${{secrets.DOCKER_USERNAME}}/exchange-service:latest
-        docker push ${{secrets.DOCKER_USERNAME}}/exchange-service:kube-v1
-        docker push ${{secrets.DOCKER_USERNAME}}/exchange-service:${{github.RUN_ID}}
+        docker buildx build \
+          --platform linux/amd64,linux/arm64 \
+          -t ${{ secrets.DOCKER_USERNAME }}/exchange-service:latest \
+          -t ${{ secrets.DOCKER_USERNAME }}/exchange-service:kube-v1 \
+          -t ${{ secrets.DOCKER_USERNAME }}/exchange-service:${{ github.run_id }} \
+          --push \
+          ./19_MicroservicesRunningInKubernetesCluster/exchange-service
